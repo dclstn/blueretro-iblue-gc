@@ -14,6 +14,9 @@
 
 #ifdef CONFIG_BLUERETRO_SYSTEM_SEA_BOARD
 #define ERR_LED_PIN 32
+#elif defined(CONFIG_BLUERETRO_BOARD_IBLUE_GC)
+/* GPIO17 is power off on this board */
+#define ERR_LED_PIN 22
 #else
 #define ERR_LED_PIN 17
 #endif
@@ -65,6 +68,10 @@ void err_led_init(uint32_t package) {
         ledc_channel.gpio_num = PICO_ERR_LED_PIN;
         err_led_pin = PICO_ERR_LED_PIN;
     }
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+    /* Status LED is active low on this board */
+    ledc_channel.flags.output_invert = 1;
+#endif
 
     ledc_timer_config(&ledc_timer);
     ledc_channel_config(&ledc_channel);

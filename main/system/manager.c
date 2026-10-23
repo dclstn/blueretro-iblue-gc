@@ -29,12 +29,21 @@
 #include "bare_metal_app_cpu.h"
 #include "manager.h"
 
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+/* iBlueControlMod NGC, pins as set up by its stock firmware */
+#define BOOT_BTN_PIN 16
+#else
 #define BOOT_BTN_PIN 0
+#endif
 
 #define RESET_PIN 14
 
 #define POWER_ON_PIN 13
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+#define POWER_OFF_PIN 17
+#else
 #define POWER_OFF_PIN 16
+#endif
 #define POWER_SENSE_PIN 39
 
 #define POWER_OFF_ALT_PIN 12
@@ -47,10 +56,23 @@
 #define SENSE_P1_ALT_PIN 15
 #define SENSE_P2_ALT_PIN 34
 
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+#define LED_P1_PIN 15
+#define LED_P2_PIN 4
+#define LED_P3_PIN 2
+#define LED_P4_PIN 12
+#else
 #define LED_P1_PIN 2
 #define LED_P2_PIN 4
 #define LED_P3_PIN 12
 #define LED_P4_PIN 15
+#endif
+
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+#define ERR_LED_INV 1
+#else
+#define ERR_LED_INV 0
+#endif
 
 #define INHIBIT_CNT 200
 
@@ -103,7 +125,10 @@ static const sys_mgr_cmd_t sys_mgr_cmds[] = {
 };
 
 static inline uint32_t sense_port_is_empty(uint32_t index) {
-#ifdef CONFIG_BLUERETRO_HW2
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+    /* Port shields are grounded on this board, sense can't see a wired ctrl */
+    return 1;
+#elif defined(CONFIG_BLUERETRO_HW2)
     if (hw_config.ports_sense_input_polarity) {
         return !gpio_get_level(sense_list[index]);
     }
@@ -116,6 +141,12 @@ static inline uint32_t sense_port_is_empty(uint32_t index) {
 }
 
 static inline void set_power_on(uint32_t state) {
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+    /* Console video stays on only while GPIO13 is high, keep it there */
+    (void)state;
+    gpio_set_level(POWER_ON_PIN, 1);
+    return;
+#endif
     if (hw_config.power_pin_polarity) {
         gpio_set_level(POWER_ON_PIN, !state);
     }
@@ -165,7 +196,9 @@ static inline uint32_t get_port_led_pin(uint32_t index) {
 }
 
 static void internal_flag_init(void) {
-#ifdef CONFIG_BLUERETRO_HW2
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+    /* Always internal, the stock fw doesn't probe the pins for it either */
+#elif defined(CONFIG_BLUERETRO_HW2)
     if (hw_config.power_pin_polarity) {
         if (!gpio_get_level(POWER_ON_PIN) && gpio_get_level(RESET_PIN)) {
             hw_config.external_adapter = 1;
@@ -211,10 +244,10 @@ static void set_leds_as_btn_status(uint8_t state) {
 
     /* Use error LED as well */
     if (state) {
-        esp_rom_gpio_connect_out_signal(err_led_pin, ledc_periph_signal[LEDC_LOW_SPEED_MODE].sig_out0_idx + LEDC_CHANNEL_1, 0, 0);
+        esp_rom_gpio_connect_out_signal(err_led_pin, ledc_periph_signal[LEDC_LOW_SPEED_MODE].sig_out0_idx + LEDC_CHANNEL_1, ERR_LED_INV, 0);
     }
     else {
-        esp_rom_gpio_connect_out_signal(err_led_pin, ledc_periph_signal[LEDC_HIGH_SPEED_MODE].sig_out0_idx + LEDC_CHANNEL_0, 0, 0);
+        esp_rom_gpio_connect_out_signal(err_led_pin, ledc_periph_signal[LEDC_HIGH_SPEED_MODE].sig_out0_idx + LEDC_CHANNEL_0, ERR_LED_INV, 0);
     }
 }
 
@@ -545,6 +578,11 @@ static void sys_mgr_esp_restart(void) {
 
 static void sys_mgr_deep_sleep(void) {
     vTaskDelay(1000 / portTICK_PERIOD_MS);
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+    /* Keep GPIO13 high through deep sleep or the console video blanks */
+    gpio_hold_en(POWER_ON_PIN);
+    gpio_deep_sleep_hold_en();
+#endif
     esp_deep_sleep_start();
 }
 
@@ -669,6 +707,13 @@ void sys_mgr_init(uint32_t package) {
     hw_config.port_cnt = 1;
 #endif
 
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+    /* Stock fw holds POWER_ON_PIN high to keep the console on and never pulses power off */
+    hw_config.power_pin_is_hold = 1;
+    /* Like the stock fw, only claim a port once a BT ctrl is ready */
+    hw_config.hotplug = 1;
+#endif
+
     io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
 #ifdef CONFIG_BLUERETRO_HW2
     io_conf.pin_bit_mask = 1ULL << POWER_ON_PIN;
@@ -766,11 +811,18 @@ void sys_mgr_init(uint32_t package) {
         gpio_set_level(SENSE_P3_PIN, 1);
     }
 
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+    /* If boot switch pressed at boot, park in deep sleep and leave the console alone */
+    if (sys_mgr_get_boot_btn()) {
+        sys_mgr_deep_sleep();
+    }
+#else
     /* If boot switch pressed at boot, trigger system on and goes to deep sleep */
     if (sys_mgr_get_boot_btn() && !sys_mgr_get_power()) {
         sys_mgr_power_on();
         sys_mgr_deep_sleep();
     }
+#endif
 #endif /* CONFIG_BLUERETRO_HW2 */
 
     xTaskCreatePinnedToCore(sys_mgr_task, "sys_mgr_task", 2048, NULL, 5, NULL, 0);

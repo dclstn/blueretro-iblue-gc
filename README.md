@@ -1,88 +1,58 @@
- <p align="center"><a href="https://blueretro.com/products/brx"><img src="https://github.com/darthcloud/img/blob/main/brx_banner.png"/></a></p>
+# BlueRetro for the iBlueControlMod GameCube internal board
 
-# BlueRetro
+[BlueRetro](https://github.com/darthcloud/BlueRetro) v25.10-beta, which supports the Switch 2 (NSO) GameCube controller, patched for the AliExpress **iBlueControlMod NGC** internal adapter (HISPEEDIDO, a clone of LaserBear's BlueRetro GameCube board).
 
-<p align="center"><img src="/static/PNGs/BRE_Logo_Color_Outline.png" width="600"/></p>
-<br>
-<p align="justify">BlueRetro is a multiplayer Bluetooth controllers adapter for various retro game consoles & computers. Lost or broken controllers? Reproduction too expensive? Need those rare and obscure accessories? Just use the Bluetooth devices you already got! The project is open source hardware & software under the CERN-OHL-P-2.0 & Apache-2.0 licenses respectively. It's built for the popular ESP32 chip. Wii, Switch, PS3, PS4, PS5, Xbox One, Xbox Series X|S & generic HID Bluetooth (BR/EDR & LE) devices are supported. Parallel 1P (Computers, NeoGeo, Supergun, JAMMA, Handheld, etc), Parallel 2P (Atari 2600/7800, Master System, Computers, etc), NES, PCE / TG16, Mega Drive / Genesis, SNES, CD-i, 3DO, Jaguar, Saturn, PSX, PC-FX, JVS (Arcade), Virtual Boy, N64, Dreamcast, PS2, GameCube & Wii extension are supported with simultaneous 4+ players using a single adapter.</p>
+Stock BlueRetro builds pair controllers on this board but leave the console with no video. This build fixes that.
 
-## READ THIS FIRST
-* [Project documentation](https://github.com/darthcloud/BlueRetro/wiki)
+## Install
 
-## Need help?
-* [Open a GitHub discussion](https://github.com/darthcloud/BlueRetro/discussions)
+1. Download `BlueRetro_iblue_gamecube.bin` from [Releases](../../releases).
+2. With the console on, flash it at https://blueretro.io/ota.html. The image header has no `hw2`, so the page accepts it over the stock firmware.
+3. Switch the console off and on.
 
-## Commercial solution sponsoring BlueRetro FW development
-Buying these commercial adapters help the continued development of the BlueRetro firmware!!\
-Thanks to all sponsors!!
+To go back, flash the stock firmware the same way.
 
-[<img src="https://www.humblebazooka.com/images/HB_2021_white_rainbow_1200px.png" width="400"/>](https://www.humblebazooka.com)
-* JagBT by [Humble Bazooka](https://twitter.com/humblebazooka): Atari Jaguar single port dongle.\
-  https://www.humblebazooka.com/products/jag-bt-bluetooth-controller-adapter-for-the-atari-jaguar/
-* Neo Geo BT by [Humble Bazooka](https://twitter.com/humblebazooka): SNK Neo Geo single port dongle.\
-  https://www.humblebazooka.com/products/neo-bt-neo-geo-bluetooth-adapter/
-* PCE BT by [Humble Bazooka](https://twitter.com/humblebazooka): NEC PC-Engine dongle.\
-  https://www.humblebazooka.com/product/pce-bt-pc-engine-bluetooth-adapter/
-* Turbo BT by [Humble Bazooka](https://twitter.com/humblebazooka): NEC TurboGrafx-16 dongle.\
-  https://www.humblebazooka.com/product/turbo-bt-turbografx-16-bluetooth-adapter/
-* 3DO BT by [Humble Bazooka](https://twitter.com/humblebazooka): 3DO dongle.\
-  https://www.humblebazooka.com/products/3do-bt-3do-bluetooth-adapter
-* Saturn BT by [Humble Bazooka](https://twitter.com/humblebazooka): Saturn dongle.\
-  https://www.humblebazooka.com/products/saturn-bt-bluetooth-adapter-for-the-sega-saturn/
+## Findings
 
-<BR>
-  
-[<img src="https://i.imgur.com/qsCLN9R.png" width="400"/>](https://www.tindie.com/stores/retrotime/)
-* N64 Bluetooth Controller Receiver by [bixxewoscht](https://twitter.com/bixxewoscht): N64 single port dongle.\
-  https://8bitmods.com/n64-blueretro-bt-controller-receiver-with-memory-pak-original-grey/
+- **GPIO13 must be held high.** When it's low or floating, the board pulls the console's reset line (GPIO14) low. The console keeps running but outputs no video, on HDMI or composite. The stock firmware drives GPIO13 high; upstream BlueRetro idles it low, hence the black screen.
+- The board takes 12 V from the fan header, so it can't switch console power. The ESP32 restarts with the console and the video blanks for a moment until GPIO13 is set.
+- The port shields are grounded, so HW2 wired-controller detection can't work. All four ports go to Bluetooth.
 
-<BR>
+Pins, read from the stock firmware:
 
-[<img src="https://static.wixstatic.com/media/ce8a57_fe2ccaa817704811aefee7a0bbd74098~mv2.png/v1/fill/w_445,h_60,al_c,q_85,enc_auto/RetroOnyx_logo_primary_grey_RGB60px.png" width="400"/>](https://www.retroonyx.com/)
-* Virtual Boy BlueRetro Adapter by [RetroOnyx](https://twitter.com/mellott124): Virtual Boy dongle.\
-  https://www.retroonyx.com/product-page/virtual-boy-blueretro-adapter
+| Function | LaserBear HW2 | iBlueControlMod |
+|---|---|---|
+| Reset button in | 0 | 16 |
+| Console reset out (open drain) | 14 | 14 |
+| GPIO13 ("power on") | 13 | 13, held high |
+| Power off | 16 | 17 (unused) |
+| Power sense | 39 | 39 |
+| Port LEDs 1–4 | 2, 4, 12, 15 | 15, 4, 2, 12 |
+| Status LED | 17 | 22, active low (RGB on 18/22/23) |
+| Controller data 1–4 | 19, 5, 26, 27 | same |
 
-<BR>
-  
-  [<img src="https://github.com/darthcloud/img/blob/main/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20220407151631.png" width="400"/>](https://www.aliexpress.com/item/1005004114458491.html)
-* RetroScaler Mini Blueretro Wireless Game Controller Adapter for PS1 PS2 by [RetroScaler](https://twitter.com/RetroScaler): PS1 & PS2 single port dongle.\
-  https://www.aliexpress.us/item/3256805870708776.html?gatewayAdapt=glo2usa4itemAdapt
-* RetroScaler Blueretro Wireless Game Controller Adapter for NEO.GEO by [RetroScaler](https://twitter.com/RetroScaler): Neo-Geo single port dongle.\
-  https://www.aliexpress.us/item/3256806140926261.html?gatewayAdapt=glo2usa4itemAdapt
-* RetroScaler Blueretro Wireless Game Controller Adapter for SNES SFC by [RetroScaler](https://twitter.com/RetroScaler): SFC/SNES single port adapter.\
-  https://www.aliexpress.us/item/3256805054285627.html?gatewayAdapt=glo2usa4itemAdapt
+## Changes
 
-<BR>
-  
-[<img src="https://cdn.shopify.com/s/files/1/0550/1855/3556/files/mikegoble2ND_Logo_05_R1A_5f70d3e5-90bb-4e08-a4bc-1e91a60bd833.png" width="400"/>](https://www.laserbear.net/)
-* GameCube Blue Retro Internal Adapter by [Laser Bear Industries](https://twitter.com/collingall): GameCube controller PCB replacement with integrated BlueRetro.\
-  https://www.laserbear.net/products/gamecube-blue-retro-internal-adapter \
-  https://8bitmods.com/internal-bluetooth-blueretro-adapter-for-gamecube/
+All of these sit behind `CONFIG_BLUERETRO_BOARD_IBLUE_GC` (`configs/iblue/gamecube`):
 
-<BR>
-  
-[<img src="https://raw.githubusercontent.com/GrechTech/RetroRosetta/main/Marketing/cover2.png" width="400"/>](http://www.grechtech.co.uk/)
-* RetroRosetta by [GrechTech](https://twitter.com/GrechTech): BlueRetro universal core and cables.\
-  http://www.grechtech.co.uk/
+- the pins above, with GPIO13 held high from the start of boot and through deep sleep
+- always an internal adapter, port sense stubbed out, and each port claimed only once a controller pairs
+- the power on/off commands do nothing
 
-## Community Contribution
-* BlueRetro PS1/2 Receiver by [mi213](https://twitter.com/mi213ger): 3D printed case & PCB for building DIY PS1/2 dongle.\
-  https://github.com/Micha213/BlueRetro-PS1-2-Receiver
-* N64 BlueRetro Mount by [reventlow64](https://twitter.com/reventlow): 3d printed mount for ESP32-DevkitC for N64.\
-  https://www.prusaprinters.org/prints/90275-nintendo-64-blueretro-bluetooth-receiver-mount
-* BlueRetro Adapter Case by [Sigismond0](https://twitter.com/Sigismond0): 3d printed case for ESP32-DevkitC.\
-  https://www.prusaprinters.org/prints/116729-blueretro-bluetooth-controller-adapter-case
-* BlueRetro AIO by [pmgducati](https://github.com/pmgducati): BlueRetro Through-hole base and cable PCBs.\
-  https://github.com/pmgducati/Blue-Retro-AIO-Units
-* BlueRetro HW2 internal guides by [Nostalgic Indulgences](https://twitter.com/nosIndulgences): Internal install guides\
-  https://github.com/nostalgic-indulgences/BlueRetro_Internal_Installation
-* BlueRetro latency test by [GamingNJncos](https://twitter.com/GamingNJncos): Documentation on how to run BlueRetro latency test\
-  https://github.com/GamingNJncos/BLE-3D-Saturn-Public/tree/main/BlueRetro_Latency_Testing
-* BR4N64 by [TharathielCB](https://github.com/TharathielCB): Internal BlueRetro Flex-PCB for Nintendo 64\
-  https://github.com/TharathielCB/BR4N64
-* BlueMemCard by [ChrispyNugget](https://github.com/ChrispyNugget): Replacement PCB for PSX memory card that incorporates PicoMemcard and BlueRetro support\
-  https://github.com/ChrispyNugget/BlueMemCard
-* BlueRetro HW2 QSB for GameCube by [Arthrimus](https://github.com/Arthrimus): Internal Blueretro PCB with CurrentTrigger for GameCube\
-  https://github.com/Arthrimus/BlueRetro-HW2-GameCube
+The reset button works as in BlueRetro (tap to reset, hold 3–6 s to pair). Hold it while switching the console on to park BlueRetro for that session.
 
-<br><p align="center"><img src="https://cdn.hackaday.io/images/4560691598833898038.png" height="200"/></p>
+## Build
+
+```bash
+docker run --rm -v "$PWD:/w" -w /w ghcr.io/darthcloud/idf-blueretro:v5.5.0_2024-12-02 bash -c '
+  git config --global --add safe.directory /w && . $IDF_PATH/export.sh &&
+  cp configs/iblue/gamecube sdkconfig &&
+  echo "$(git describe --tags) iblue gc" | cut -c -31 > version.txt &&
+  BR_HW=_iblue BR_SYS=_gamecube idf.py build'
+```
+
+The output is `build/BlueRetro_iblue_gamecube.bin`.
+
+## Credits
+
+[darthcloud/BlueRetro](https://github.com/darthcloud/BlueRetro) (Apache-2.0), and [discussion #1183](https://github.com/darthcloud/BlueRetro/discussions/1183) (zeus86, VDfreesince1983, darthcloud). Tested on one board.

@@ -6,6 +6,17 @@ menu "BlueRetro"
         help
             Select this to enable HW2 features like port detection.
 
+    config BLUERETRO_BOARD_IBLUE_GC
+        bool "iBlueControlMod NGC internal board"
+        depends on BLUERETRO_HW2
+        default n
+        help
+            Select this for the iBlueControlMod GameCube internal adapter,
+            a HW2 internal clone with its own pinout. Boot button, power off,
+            error LED and port LEDs move to the pins its stock firmware uses.
+            GPIO13 is held high, low blanks the console video. Port detection
+            is disabled as the port shields are grounded.
+
     choice
         prompt "Select universal or specific system"
         default BLUERETRO_SYSTEM_UNIVERSAL

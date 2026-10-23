@@ -11,6 +11,7 @@
 #include <esp32/rom/ets_sys.h>
 #include <soc/efuse_reg.h>
 #include <esp_efuse.h>
+#include "driver/gpio.h"
 #include "system/bare_metal_app_cpu.h"
 #include "system/core0_stall.h"
 #include "system/delay.h"
@@ -150,6 +151,17 @@ static void wl_init_task(void *arg) {
 
 void app_main()
 {
+#ifdef CONFIG_BLUERETRO_BOARD_IBLUE_GC
+    /* The board blanks console video unless GPIO13 is high (the stock fw
+     * holds it there), so raise it before the slow FS and BT init */
+    gpio_config_t io_conf = {
+        .pin_bit_mask = 1ULL << 13,
+        .mode = GPIO_MODE_OUTPUT,
+    };
+    gpio_hold_dis(13);
+    gpio_set_level(13, 1);
+    gpio_config(&io_conf);
+#endif
     adapter_init();
 
     start_app_cpu(wired_init_task);
