@@ -1,5 +1,7 @@
 # BlueRetro for the iBlueControlMod GameCube internal board
 
+> **Use [konsolenschatz/BlueRetro-iBlueControlMod](https://github.com/konsolenschatz/BlueRetro-iBlueControlMod) instead.** It reaches the same fix and goes further, with GBA link support, a sleep mode, the reset timings from the board's manual and a UART recovery guide. This repo stays up for reference.
+
 This is [BlueRetro](https://github.com/darthcloud/BlueRetro) v25.10-beta patched for the iBlueControlMod NGC, an internal GameCube adapter sold on AliExpress by HISPEEDIDO. The board is a clone of LaserBear's BlueRetro GameCube adapter. v25.10-beta is the BlueRetro release that supports the Switch 2 GameCube controller.
 
 Stock BlueRetro builds pair controllers on this board, but the console loses its video. This build keeps the video and pairs the Switch 2 controller.
